@@ -38,6 +38,15 @@ export default function AppTabs() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="backup"
+        options={{
+          title: 'Backup',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons color={color} name="cloud-lock-outline" size={size} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

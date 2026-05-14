@@ -1,13 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#063d32" flood-opacity=".28"/>
+    <filter id="soft-shadow" x="-14%" y="-12%" width="128%" height="132%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#18213c" flood-opacity=".2"/>
     </filter>
   </defs>
-  <circle cx="256" cy="256" r="168" fill="#e9f7f0" filter="url(#shadow)"/>
-  <circle cx="256" cy="256" r="128" fill="#ffffff"/>
-  <path d="M256 154v102l64 42" fill="none" stroke="#0d6b52" stroke-width="31" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="256" cy="256" r="18" fill="#0d6b52"/>
-  <rect x="338" y="114" width="43" height="122" rx="21.5" fill="#16a274"/>
-  <rect x="298" y="154" width="122" height="43" rx="21.5" fill="#16a274"/>
+  <g filter="url(#soft-shadow)">
+    <path d="M74 106c0-30 24-54 54-54h256c30 0 54 24 54 54v300c0 30-24 54-54 54H128c-30 0-54-24-54-54V106z" fill="#e6f1f6"/>
+    <path d="M74 106c0-30 24-54 54-54h256c30 0 54 24 54 54v77H74v-77z" fill="#ff3c61"/>
+    <rect x="109" y="13" width="38" height="74" rx="19" fill="#303a5d"/>
+    <rect x="227" y="13" width="38" height="74" rx="19" fill="#303a5d"/>
+    <rect x="345" y="13" width="38" height="74" rx="19" fill="#303a5d"/>
+    <circle cx="256" cy="303" r="133" fill="#ff3c61"/>
+    <rect x="185" y="278" width="142" height="50" rx="9" fill="#ffffff"/>
+    <rect x="231" y="232" width="50" height="142" rx="9" fill="#ffffff"/>
+  </g>
 </svg>
