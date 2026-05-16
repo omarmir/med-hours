@@ -101,6 +101,18 @@ describe('billing time rules', () => {
     expect(blocks[1]).toMatchObject({ workDate: '2026-05-14', durationMinutes: 30 });
   });
 
+  it('splits timer entries with the selected block type', () => {
+    const blocks = splitTimerIntoBlocks(
+      new Date(2026, 4, 13, 23, 45),
+      new Date(2026, 4, 14, 0, 30),
+      'indirect',
+    );
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks.every((block) => block.blockType === 'indirect')).toBe(true);
+    expect(blocks.every((block) => block.source === 'timer')).toBe(true);
+  });
+
   it('excludes paused intervals from timer blocks', () => {
     const blocks = splitTimerIntoBlocksExcludingPauses(
       new Date(2026, 4, 13, 9, 0),

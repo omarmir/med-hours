@@ -6,6 +6,7 @@ import {
   NewTimeBlock,
   TimerPause,
   TimeBlock,
+  TimeBlockType,
   splitTimerIntoBlocksExcludingPauses,
   toIsoMinute,
 } from '@/domain/time';
@@ -273,7 +274,7 @@ export class TimeRepository {
     });
   }
 
-  async stopTimer(now = new Date()) {
+  async stopTimer(blockType: TimeBlockType = 'direct', now = new Date()) {
     const active = await this.getActiveTimer();
     if (!active) {
       throw new Error('No timer is running.');
@@ -283,7 +284,12 @@ export class TimeRepository {
     const pauses = active.pausedAt
       ? active.pauses.map((pause) => (pause.endAt ? pause : { ...pause, endAt: active.pausedAt }))
       : active.pauses;
-    const blocks = splitTimerIntoBlocksExcludingPauses(new Date(active.startAt), stopAt, pauses);
+    const blocks = splitTimerIntoBlocksExcludingPauses(
+      new Date(active.startAt),
+      stopAt,
+      pauses,
+      blockType,
+    );
 
     if (blocks.length === 0) {
       throw new Error('Timer has no worked time to save.');
@@ -352,7 +358,7 @@ export class TimeRepository {
     await this.insertBlock(block);
   }
 
-  async updateManualBlock(id: number, block: NewTimeBlock) {
+  async updateBlock(id: number, block: NewTimeBlock) {
     const existing = await this.db.getFirstAsync<TimeBlockRow>(
       `SELECT * FROM time_blocks WHERE id = ?`,
       id,
@@ -360,10 +366,6 @@ export class TimeRepository {
 
     if (!existing) {
       throw new Error('Time block no longer exists.');
-    }
-
-    if (existing.source !== 'manual') {
-      throw new Error('Timer-created blocks cannot be edited.');
     }
 
     await this.assertNoOverlap(block, id);
@@ -384,7 +386,7 @@ export class TimeRepository {
       block.endAt,
       block.durationMinutes,
       block.blockType,
-      block.source,
+      existing.source,
       new Date().toISOString(),
       id,
     );

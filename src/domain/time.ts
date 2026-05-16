@@ -140,7 +140,11 @@ export function claimableIndirectUnits(rawDirectMinutes: number) {
   return Math.floor(indirectCapMinutes(rawDirectMinutes) / 15);
 }
 
-export function splitTimerIntoBlocks(startAt: Date, endAt: Date): NewTimeBlock[] {
+export function splitTimerIntoBlocks(
+  startAt: Date,
+  endAt: Date,
+  blockType: TimeBlockType = 'direct',
+): NewTimeBlock[] {
   if (endAt <= startAt) {
     throw new Error('Timer stop time must be after start time.');
   }
@@ -161,7 +165,7 @@ export function splitTimerIntoBlocks(startAt: Date, endAt: Date): NewTimeBlock[]
         startAt: toIsoMinute(cursor),
         endAt: toIsoMinute(segmentEnd),
         durationMinutes,
-        blockType: 'direct',
+        blockType,
         source: 'timer',
       });
     }
@@ -176,6 +180,7 @@ export function splitTimerIntoBlocksExcludingPauses(
   startAt: Date,
   endAt: Date,
   pauses: Pick<TimerPause, 'startAt' | 'endAt'>[],
+  blockType: TimeBlockType = 'direct',
 ): NewTimeBlock[] {
   if (endAt <= startAt) {
     throw new Error('Timer stop time must be after start time.');
@@ -197,7 +202,9 @@ export function splitTimerIntoBlocksExcludingPauses(
     }
 
     if (pauseStart > cursor) {
-      blocks.push(...splitTimerIntoBlocks(cursor, pauseStart < endAt ? pauseStart : endAt));
+      blocks.push(
+        ...splitTimerIntoBlocks(cursor, pauseStart < endAt ? pauseStart : endAt, blockType),
+      );
     }
 
     if (pauseEnd > cursor) {
@@ -206,7 +213,7 @@ export function splitTimerIntoBlocksExcludingPauses(
   }
 
   if (cursor < endAt) {
-    blocks.push(...splitTimerIntoBlocks(cursor, endAt));
+    blocks.push(...splitTimerIntoBlocks(cursor, endAt, blockType));
   }
 
   return blocks;

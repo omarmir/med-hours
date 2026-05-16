@@ -15,7 +15,7 @@ import {
   BackupRestorePreview,
   BackupStatusSnapshot,
 } from '@/storage/backup-manager';
-import { ActiveTimer, NewTimeBlock, TimeBlock } from '@/domain/time';
+import { ActiveTimer, NewTimeBlock, TimeBlock, TimeBlockType } from '@/domain/time';
 import { TimeRepository, openMedHoursDatabase } from '@/storage/database';
 import { DriveBackupFile, GoogleDriveBackupClient } from '@/storage/google-drive-backup';
 
@@ -36,12 +36,12 @@ type TimeStoreContextValue = {
   previewRestoreBackup: (file: DriveBackupFile) => Promise<BackupRestorePreview>;
   restoreBackup: (preview: BackupRestorePreview) => Promise<void>;
   addManualBlock: (block: NewTimeBlock) => Promise<void>;
-  updateManualBlock: (id: number, block: NewTimeBlock) => Promise<void>;
+  updateBlock: (id: number, block: NewTimeBlock) => Promise<void>;
   deleteBlock: (id: number) => Promise<void>;
   startTimer: () => Promise<void>;
   pauseTimer: () => Promise<void>;
   resumeTimer: () => Promise<void>;
-  stopTimer: () => Promise<void>;
+  stopTimer: (blockType?: TimeBlockType) => Promise<void>;
   cancelTimer: () => Promise<void>;
 };
 
@@ -198,13 +198,13 @@ export function TimeStoreProvider({ children }: PropsWithChildren) {
           await refresh();
         }),
       addManualBlock: (block) => runMutation((repo) => repo.addManualBlock(block), true),
-      updateManualBlock: (id, block) =>
-        runMutation((repo) => repo.updateManualBlock(id, block), true),
+      updateBlock: (id, block) =>
+        runMutation((repo) => repo.updateBlock(id, block), true),
       deleteBlock: (id) => runMutation((repo) => repo.deleteBlock(id), true),
       startTimer: () => runMutation((repo) => repo.startTimer()),
       pauseTimer: () => runMutation((repo) => repo.pauseTimer()),
       resumeTimer: () => runMutation((repo) => repo.resumeTimer()),
-      stopTimer: () => runMutation((repo) => repo.stopTimer(), true),
+      stopTimer: (blockType = 'direct') => runMutation((repo) => repo.stopTimer(blockType), true),
       cancelTimer: () => runMutation((repo) => repo.cancelTimer()),
     }),
     [

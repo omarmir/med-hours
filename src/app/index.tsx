@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { AppState, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
@@ -7,6 +7,9 @@ import {
   Card,
   Chip,
   IconButton,
+  Modal,
+  Portal,
+  SegmentedButtons,
   Snackbar,
   Surface,
   Text,
@@ -16,6 +19,7 @@ import {
 import { BlockEditor } from '@/components/time/block-editor';
 import {
   TimeBlock,
+  TimeBlockType,
   activeTimerElapsedMinutes,
   claimableIndirectUnits,
   formatClockTime,
@@ -44,7 +48,7 @@ export default function TodayScreen() {
     refresh,
     clearError,
     addManualBlock,
-    updateManualBlock,
+    updateBlock,
     deleteBlock,
     startTimer,
     pauseTimer,
@@ -55,16 +59,34 @@ export default function TodayScreen() {
   const [selectedDate, setSelectedDate] = useState(formatDateKey(new Date()));
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingBlock, setEditingBlock] = useState<TimeBlock | null>(null);
-  const [, setTimerRefresh] = useState(0);
+  const [stopTypeVisible, setStopTypeVisible] = useState(false);
+  const [timerStopType, setTimerStopType] = useState<TimeBlockType>('direct');
+  const [elapsedMinutes, setElapsedMinutes] = useState(0);
+
+  const refreshTimerDisplay = React.useCallback(() => {
+    setElapsedMinutes(activeTimer ? activeTimerElapsedMinutes(activeTimer) : 0);
+  }, [activeTimer]);
 
   React.useEffect(() => {
+    refreshTimerDisplay();
+
     if (!activeTimer) {
-      return;
+      return undefined;
     }
 
-    const interval = setInterval(() => setTimerRefresh((tick) => tick + 1), 30_000);
-    return () => clearInterval(interval);
-  }, [activeTimer]);
+    const interval = setInterval(refreshTimerDisplay, 30_000);
+    const appStateSubscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        refreshTimerDisplay();
+        void refresh().catch(() => undefined);
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      appStateSubscription.remove();
+    };
+  }, [activeTimer, refresh, refreshTimerDisplay]);
 
   const selectedBlocks = useMemo(
     () =>
@@ -90,11 +112,19 @@ export default function TodayScreen() {
     [selectedDate, selectedIndirectBlocks],
   );
   const recommendedIndirectUnits = claimableIndirectUnits(directSummary.minutes);
-  const elapsedMinutes = activeTimer ? activeTimerElapsedMinutes(activeTimer) : 0;
-
   const openEditor = (block?: TimeBlock) => {
     setEditingBlock(block ?? null);
     setEditorVisible(true);
+  };
+
+  const openStopTypePicker = () => {
+    setTimerStopType('direct');
+    setStopTypeVisible(true);
+  };
+
+  const handleStopTimer = async () => {
+    await stopTimer(timerStopType);
+    setStopTypeVisible(false);
   };
 
   return (
@@ -163,7 +193,7 @@ export default function TodayScreen() {
                   style={styles.timerActionButton}
                   loading={isBusy}
                   disabled={isBusy || !isReady}
-                  onPress={stopTimer}>
+                  onPress={openStopTypePicker}>
                   Stop
                 </Button>
                 <Button
@@ -260,14 +290,12 @@ export default function TodayScreen() {
                     <Chip compact textStyle={styles.sourceChipText} style={styles.sourceChip}>
                       {block.source}
                     </Chip>
-                    {block.source === 'manual' ? (
-                      <IconButton
-                        icon="pencil"
-                        size={18}
-                        style={styles.editButton}
-                        onPress={() => openEditor(block)}
-                      />
-                    ) : null}
+                    <IconButton
+                      icon="pencil"
+                      size={18}
+                      style={styles.editButton}
+                      onPress={() => openEditor(block)}
+                    />
                   </View>
                 </Card.Content>
               </Card>
@@ -284,7 +312,7 @@ export default function TodayScreen() {
         onDismiss={() => setEditorVisible(false)}
         onSave={async (input, blockId) => {
           if (blockId) {
-            await updateManualBlock(blockId, input);
+            await updateBlock(blockId, input);
             return;
           }
 
@@ -296,6 +324,38 @@ export default function TodayScreen() {
       <Snackbar visible={Boolean(error)} onDismiss={clearError}>
         {error}
       </Snackbar>
+
+      <Portal>
+        <Modal
+          visible={stopTypeVisible}
+          onDismiss={() => setStopTypeVisible(false)}
+          contentContainerStyle={styles.stopModal}>
+          <Surface elevation={2} style={styles.stopSheet}>
+            <View>
+              <Text variant="titleLarge">Save timer as</Text>
+              <Text variant="bodyMedium" style={styles.muted}>
+                {formatDuration(elapsedMinutes)} will be added to the selected block type.
+              </Text>
+            </View>
+            <SegmentedButtons
+              value={timerStopType}
+              onValueChange={(value) => setTimerStopType(value as TimeBlockType)}
+              buttons={[
+                { value: 'direct', label: 'Direct', icon: 'account-clock-outline' },
+                { value: 'indirect', label: 'Indirect', icon: 'clipboard-clock-outline' },
+              ]}
+            />
+            <View style={styles.stopActions}>
+              <Button disabled={isBusy} onPress={() => setStopTypeVisible(false)}>
+                Cancel
+              </Button>
+              <Button mode="contained" loading={isBusy} disabled={isBusy} onPress={handleStopTimer}>
+                Save
+              </Button>
+            </View>
+          </Surface>
+        </Modal>
+      </Portal>
     </SafeAreaView>
   );
 }
@@ -445,5 +505,20 @@ const styles = StyleSheet.create({
     height: 30,
     margin: 0,
     width: 30,
+  },
+  stopModal: {
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+  },
+  stopSheet: {
+    borderRadius: 8,
+    gap: 18,
+    padding: 18,
+  },
+  stopActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'flex-end',
   },
 });
